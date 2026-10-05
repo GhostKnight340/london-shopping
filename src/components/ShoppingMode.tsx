@@ -1,146 +1,165 @@
 import { useState } from 'react';
+import { Check, X } from 'lucide-react';
 import type { ShoppingGoal } from '../types';
 import { useStore } from '../store';
-import { formatCurrency } from '../utils';
-import { X } from 'lucide-react';
+import {
+  compareToEstimate,
+  formatCurrency,
+  getCategoryProgress,
+  parseAmount,
+  tapFeedback,
+} from '../utils';
+import AnimatedMoney from './AnimatedMoney';
+import MoneyInput from './MoneyInput';
+import ProgressBar from './ProgressBar';
+import { useToast } from './Toast';
+import { useBackGuard } from '../useBackGuard';
 
 interface ShoppingModeProps {
   haul: ShoppingGoal;
   onExit: () => void;
 }
 
+const QUICK_AMOUNTS = [5, 10, 20];
+
+/**
+ * In-store mode. Biggest number, biggest targets, nothing else on screen.
+ * It is a takeover, so it carries both safe-area insets itself — the old one
+ * put its action bar under the home indicator.
+ */
 export default function ShoppingMode({ haul, onExit }: ShoppingModeProps) {
-  const { trip, toggleCategory, updateGoalStatus, addTransaction } = useStore();
-  const [customAmount, setCustomAmount] = useState('');
+  const { trip, toggleCategory, updateGoalStatus, addTransaction, removeTransaction } = useStore();
+  const { toast } = useToast();
+  const [custom, setCustom] = useState('');
 
-  const quickAmounts = [5, 10, 20];
+  const currency = trip?.currency || 'GBP';
+  const progress = getCategoryProgress(haul.categories);
+  const estimate = compareToEstimate(haul.actualCost, haul.estimatedCost, currency);
+  const parsed = parseAmount(custom);
 
-  const handleQuickAdd = async (amount: number) => {
+  useBackGuard(true, onExit);
+
+  const add = async (amount: number) => {
+    tapFeedback();
     await addTransaction(haul.id, amount);
+    const latest = useStore
+      .getState()
+      .goals.find((g) => g.id === haul.id)
+      ?.transactions.at(-1);
+    toast(`Added ${formatCurrency(amount, currency)}`, () => {
+      if (latest) void removeTransaction(haul.id, latest.id);
+    });
   };
 
-  const handleCustomAdd = async () => {
-    const amount = parseFloat(customAmount);
-    if (amount > 0) {
-      await addTransaction(haul.id, amount);
-      setCustomAmount('');
-    }
-  };
-
-  const handleComplete = async () => {
+  const complete = async () => {
     await updateGoalStatus(haul.id, 'completed');
     onExit();
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900 dark:bg-slate-950 z-50 flex flex-col text-white">
-      {/* Top Bar */}
-      <div className="bg-blue-600 dark:bg-blue-700 p-4 flex items-center justify-between sticky top-0">
-        <div>
-          <h2 className="text-xl font-bold">{haul.title}</h2>
-          <p className="text-sm text-blue-100">Shopping Mode</p>
+    <div className="ds-takeover">
+      <header
+        className="flex items-center gap-2 px-4 py-3"
+        style={{ background: 'var(--surface-raised)', boxShadow: 'var(--shadow-card)' }}
+      >
+        <div className="flex-1 min-w-0">
+          <p className="ds-eyebrow">In store</p>
+          <h2 className="ds-title truncate">{haul.title}</h2>
         </div>
-        <button
-          onClick={onExit}
-          className="p-2 hover:bg-blue-700 dark:hover:bg-blue-800 rounded-lg transition-colors"
-        >
-          <X className="w-6 h-6" />
+        <button type="button" className="ds-icon-btn" onClick={onExit} aria-label="Close in-store mode">
+          <X style={{ width: 24, height: 24 }} aria-hidden="true" />
         </button>
-      </div>
+      </header>
 
-      {/* Main Content - Scrollable */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* Categories */}
-        {haul.categories && haul.categories.length > 0 && (
-          <div className="space-y-2">
-            <h3 className="text-lg font-bold text-slate-200">Coverage</h3>
-            {haul.categories.map(category => (
-              <button
-                key={category.id}
-                onClick={() => toggleCategory(haul.id, category.id)}
-                className="w-full flex items-center gap-3 p-4 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 transition-colors text-left"
+      <div className="flex-1 overflow-y-auto">
+        <div className="ds-screen" style={{ gap: 'var(--space-6)' }}>
+          <section className="ds-card">
+            <p className="ds-eyebrow">Spent here</p>
+            <p className="mt-1">
+              <AnimatedMoney value={haul.actualCost} currency={currency} />
+            </p>
+            {estimate && (
+              <p
+                className="ds-caption ds-num mt-1 font-semibold"
+                style={{ color: estimate.tone === 'danger' ? 'var(--danger)' : 'var(--ink-muted)' }}
               >
-                <div className={`flex-shrink-0 w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-colors ${
-                  category.completed
-                    ? 'bg-green-600 border-green-600 text-white'
-                    : 'border-slate-600'
-                }`}>
-                  {category.completed && '✓'}
-                </div>
-                <span className={`flex-1 text-lg font-semibold ${
-                  category.completed ? 'text-slate-400 line-through' : 'text-white'
-                }`}>
-                  {category.title}
-                </span>
-                <span className="text-sm text-slate-400">
-                  {category.completed ? '✓' : '○'}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
+                {estimate.text}
+              </p>
+            )}
 
-        {/* Spending */}
-        <div className="space-y-3 bg-slate-800/50 rounded-xl p-4">
-          <h3 className="text-lg font-bold">Current Spend</h3>
-          <p className="text-4xl font-bold text-blue-400">
-            {formatCurrency(haul.actualCost, trip?.currency || 'GBP')}
-          </p>
-
-          <div className="space-y-2 pt-2">
-            <p className="text-sm text-slate-400">Quick Add</p>
-            <div className="grid grid-cols-3 gap-2">
-              {quickAmounts.map(amount => (
-                <button
-                  key={amount}
-                  onClick={() => handleQuickAdd(amount)}
-                  className="py-3 px-2 rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 font-bold transition-colors text-base"
-                >
-                  +£{amount}
+            <div className="grid grid-cols-3 gap-2 mt-4">
+              {QUICK_AMOUNTS.map((amount) => (
+                <button key={amount} type="button" className="ds-chip" onClick={() => void add(amount)}>
+                  +{formatCurrency(amount, currency).replace(/\.00$/, '')}
                 </button>
               ))}
             </div>
-          </div>
 
-          <div className="space-y-2 pt-2">
-            <p className="text-sm text-slate-400">Custom Amount</p>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2">£</span>
-                <input
-                  type="number"
-                  value={customAmount}
-                  onChange={(e) => setCustomAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full pl-6 pr-3 py-3 rounded-lg border border-slate-600 bg-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
-                  step="0.01"
+            <div className="flex gap-2 mt-2">
+              <div className="flex-1">
+                <MoneyInput
+                  value={custom}
+                  onChange={setCustom}
+                  currency={currency}
+                  onEnter={() => {
+                    if (parsed) {
+                      void add(parsed);
+                      setCustom('');
+                    }
+                  }}
                 />
               </div>
               <button
-                onClick={handleCustomAdd}
-                disabled={!customAmount || parseFloat(customAmount) <= 0}
-                className="px-4 py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-lg font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+                className="ds-btn ds-btn--primary"
+                disabled={!parsed}
+                onClick={() => {
+                  if (!parsed) return;
+                  void add(parsed);
+                  setCustom('');
+                }}
               >
                 Add
               </button>
             </div>
-          </div>
+          </section>
+
+          {haul.categories && haul.categories.length > 0 && (
+            <section className="flex flex-col gap-2">
+              <ProgressBar completed={progress.completed} total={progress.total} />
+              {haul.categories.map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  className="ds-row shadow-card"
+                  style={{ minHeight: 'var(--control-lg)' }}
+                  role="checkbox"
+                  aria-checked={category.completed}
+                  onClick={() => {
+                    tapFeedback();
+                    void toggleCategory(haul.id, category.id);
+                  }}
+                >
+                  <span className="ds-check" aria-hidden="true" data-checked={category.completed}>
+                    {category.completed && <Check style={{ width: 16, height: 16 }} />}
+                  </span>
+                  <span className="ds-body font-semibold flex-1">{category.title}</span>
+                  <span className="ds-caption ds-muted">
+                    {category.completed ? 'Covered' : 'To do'}
+                  </span>
+                </button>
+              ))}
+            </section>
+          )}
         </div>
       </div>
 
-      {/* Bottom Actions - Sticky */}
-      <div className="sticky bottom-0 bg-slate-800/95 border-t border-slate-700 p-4 space-y-2">
-        <button
-          onClick={handleComplete}
-          className="w-full py-4 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-xl font-bold text-lg transition-colors"
-        >
-          ✓ Mark as Complete
+      <div className="ds-actionbar ds-actionbar--static">
+        <button type="button" className="ds-btn ds-btn--primary ds-btn--lg ds-btn--block" onClick={() => void complete()}>
+          Mark haul complete
         </button>
-        <button
-          onClick={onExit}
-          className="w-full py-4 bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-white rounded-xl font-bold text-lg transition-colors"
-        >
-          Exit Shopping Mode
+        <button type="button" className="ds-btn ds-btn--secondary ds-btn--block" onClick={onExit}>
+          Keep shopping
         </button>
       </div>
     </div>

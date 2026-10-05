@@ -1,7 +1,11 @@
 import { useState } from 'react';
-import type { ShoppingGoal } from '../types';
+import { Plus, X } from 'lucide-react';
+import type { HaulCategory, ShoppingGoal } from '../types';
 import { useStore } from '../store';
-import { ChevronLeft } from 'lucide-react';
+import { parseAmount } from '../utils';
+import MoneyInput from './MoneyInput';
+import PlacePicker from './PlacePicker';
+import ScreenHeader from './ScreenHeader';
 
 interface EditHaulProps {
   haul: ShoppingGoal;
@@ -9,130 +13,162 @@ interface EditHaulProps {
 }
 
 export default function EditHaul({ haul, onBack }: EditHaulProps) {
-  const { places, updateGoal, updateGoalPlaces } = useStore();
+  const { trip, updateGoal, updateGoalPlaces } = useStore();
   const [title, setTitle] = useState(haul.title);
   const [description, setDescription] = useState(haul.description || '');
-  const [estimatedCost, setEstimatedCost] = useState(haul.estimatedCost?.toString() || '');
-  const [notes, setNotes] = useState(haul.notes || '');
-  const [selectedPlaces, setSelectedPlaces] = useState<Set<string>>(
-    new Set(haul.places || [])
+  const [estimatedCost, setEstimatedCost] = useState(
+    haul.estimatedCost ? haul.estimatedCost.toFixed(2) : '',
   );
+  const [notes, setNotes] = useState(haul.notes || '');
+  const [categories, setCategories] = useState<HaulCategory[]>(haul.categories ?? []);
+  const [selectedPlaces, setSelectedPlaces] = useState<Set<string>>(new Set(haul.places || []));
+  const [saving, setSaving] = useState(false);
+
+  const currency = trip?.currency || 'GBP';
+  const canSave = title.trim().length > 0 && !saving;
+
+  const togglePlace = (placeId: string) => {
+    setSelectedPlaces((current) => {
+      const next = new Set(current);
+      if (next.has(placeId)) next.delete(placeId);
+      else next.add(placeId);
+      return next;
+    });
+  };
 
   const handleSave = async () => {
+    if (!canSave) return;
+    setSaving(true);
+
+    // Categories keep their ids, so editing a title does not reset what is
+    // already covered.
+    const cleaned = categories
+      .map((c) => ({ ...c, title: c.title.trim() }))
+      .filter((c) => c.title.length > 0);
+
     await updateGoal({
       ...haul,
-      title,
-      description,
-      estimatedCost: estimatedCost ? parseFloat(estimatedCost) : undefined,
-      notes,
+      title: title.trim(),
+      description: description.trim() || undefined,
+      estimatedCost: parseAmount(estimatedCost) ?? undefined,
+      notes: notes.trim() || undefined,
+      categories: cleaned,
     });
     await updateGoalPlaces(haul.id, Array.from(selectedPlaces));
     onBack();
   };
 
-  const togglePlace = (placeId: string) => {
-    const newSet = new Set(selectedPlaces);
-    if (newSet.has(placeId)) {
-      newSet.delete(placeId);
-    } else {
-      newSet.add(placeId);
-    }
-    setSelectedPlaces(newSet);
-  };
-
   return (
-    <div className="w-full p-4 sm:p-6 space-y-6 pb-32">
-      <div className="flex items-center gap-4">
-        <button
-          onClick={onBack}
-          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-        >
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Edit Haul</h1>
-      </div>
+    <div className="ds-screen" style={{ gap: 'var(--space-6)' }}>
+      <ScreenHeader title="Edit haul" onBack={onBack} />
 
-      <div className="card space-y-4">
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
-            Title
+      <div className="ds-card flex flex-col gap-4">
+        <div className="ds-field">
+          <label className="ds-label" htmlFor="edit-haul-title">
+            Title (required)
           </label>
           <input
+            id="edit-haul-title"
+            className="ds-input"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
+        <div className="ds-field">
+          <label className="ds-label" htmlFor="edit-haul-estimate">
+            Estimated cost
+          </label>
+          <MoneyInput
+            id="edit-haul-estimate"
+            value={estimatedCost}
+            onChange={setEstimatedCost}
+            currency={currency}
+          />
+        </div>
+
+        <div className="ds-field">
+          <span className="ds-label">Categories to cover</span>
+          <div className="flex flex-col gap-2">
+            {categories.map((category, idx) => (
+              <div key={category.id} className="flex gap-2">
+                <input
+                  className="ds-input"
+                  type="text"
+                  value={category.title}
+                  onChange={(e) => {
+                    const next = [...categories];
+                    next[idx] = { ...next[idx], title: e.target.value };
+                    setCategories(next);
+                  }}
+                />
+                <button
+                  type="button"
+                  className="ds-icon-btn"
+                  onClick={() => setCategories(categories.filter((_, i) => i !== idx))}
+                  aria-label={`Remove ${category.title || `category ${idx + 1}`}`}
+                >
+                  <X style={{ width: 18, height: 18 }} aria-hidden="true" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="ds-btn ds-btn--secondary ds-btn--sm self-start"
+            onClick={() =>
+              setCategories([
+                ...categories,
+                { id: `cat-${Date.now()}-${categories.length}`, title: '', completed: false },
+              ])
+            }
+          >
+            <Plus style={{ width: 16, height: 16 }} aria-hidden="true" />
+            Add category
+          </button>
+        </div>
+
+        <PlacePicker label="Places" selected={selectedPlaces} onToggle={togglePlace} />
+
+        <div className="ds-field">
+          <label className="ds-label" htmlFor="edit-haul-description">
             Description
           </label>
-          <textarea
+          <input
+            id="edit-haul-description"
+            className="ds-input"
+            type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-24"
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
-            Estimated Cost (£)
-          </label>
-          <input
-            type="number"
-            value={estimatedCost}
-            onChange={(e) => setEstimatedCost(e.target.value)}
-            placeholder="0.00"
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            step="0.01"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
+        <div className="ds-field">
+          <label className="ds-label" htmlFor="edit-haul-notes">
             Notes
           </label>
           <textarea
+            id="edit-haul-notes"
+            className="ds-input"
+            rows={3}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-20"
-            placeholder="Examples, tips, etc..."
           />
-        </div>
-
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-3">
-            Associated Places
-          </label>
-          <div className="space-y-2">
-            {places.map(place => (
-              <label key={place.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedPlaces.has(place.id)}
-                  onChange={() => togglePlace(place.id)}
-                  className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 accent-blue-600"
-                />
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-white">{place.name}</p>
-                  {place.area && (
-                    <p className="text-xs text-slate-600 dark:text-slate-400">{place.area}</p>
-                  )}
-                </div>
-              </label>
-            ))}
-          </div>
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-4 sm:relative sm:border-t-0">
+      <div className="ds-actionbar">
         <button
-          onClick={handleSave}
-          className="w-full btn-primary"
+          type="button"
+          className="ds-btn ds-btn--primary ds-btn--lg ds-btn--block"
+          disabled={!canSave}
+          onClick={() => void handleSave()}
         >
-          Save Changes
+          {saving ? 'Saving…' : 'Save changes'}
+        </button>
+        <button type="button" className="ds-btn ds-btn--secondary ds-btn--block" onClick={onBack}>
+          Cancel
         </button>
       </div>
     </div>

@@ -1,31 +1,32 @@
 import { useRef, useState } from 'react';
+import { AlertCircle, CheckCircle2, Download, Upload } from 'lucide-react';
 import { useStore } from '../store';
-import { Download, Upload, AlertCircle } from 'lucide-react';
+import { getThemeChoice, setThemeChoice, type ThemeChoice } from '../theme';
 
 export default function Settings() {
   const { exportData, importData } = useStore();
-  const [exporting, setExporting] = useState(false);
-  const [importing, setImporting] = useState(false);
+  const [busy, setBusy] = useState<'export' | 'import' | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [theme, setTheme] = useState<ThemeChoice>(getThemeChoice);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = async () => {
-    setExporting(true);
+    setBusy('export');
     setMessage(null);
     try {
       const data = await exportData();
-      const element = document.createElement('a');
-      element.setAttribute('href', `data:text/plain;charset=utf-8,${encodeURIComponent(data)}`);
-      element.setAttribute('download', `london-shopping-${new Date().toISOString().split('T')[0]}.json`);
-      element.style.display = 'none';
-      document.body.appendChild(element);
-      element.click();
-      document.body.removeChild(element);
-      setMessage({ type: 'success', text: 'Data exported successfully' });
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to export data' });
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `trip-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setMessage({ type: 'success', text: 'Backup downloaded.' });
+    } catch {
+      setMessage({ type: 'error', text: 'Could not export your data.' });
     } finally {
-      setExporting(false);
+      setBusy(null);
     }
   };
 
@@ -33,100 +34,127 @@ export default function Settings() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setImporting(true);
+    setBusy('import');
     setMessage(null);
     try {
-      const text = await file.text();
-      await importData(text);
-      setMessage({ type: 'success', text: 'Data imported successfully' });
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to import data. Invalid file format.' });
+      await importData(await file.text());
+      setMessage({ type: 'success', text: 'Backup restored.' });
+    } catch {
+      setMessage({ type: 'error', text: 'That file could not be read as a Trip backup.' });
     } finally {
-      setImporting(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      setBusy(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  return (
-    <div className="w-full p-4 sm:p-6 space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Settings</h1>
-      </div>
+  const chooseTheme = (choice: ThemeChoice) => {
+    setTheme(choice);
+    setThemeChoice(choice);
+  };
 
-      {/* Messages */}
+  return (
+    <div className="ds-screen">
+      <header>
+        <h1 className="ds-display">Settings</h1>
+      </header>
+
       {message && (
-        <div className={`p-4 rounded-lg flex gap-3 ${
-          message.type === 'success'
-            ? 'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300'
-            : 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300'
-        }`}>
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
-          <p>{message.text}</p>
+        <div
+          className="ds-card flex gap-3 items-start"
+          role="status"
+          aria-live="polite"
+          style={{
+            background: message.type === 'success' ? 'var(--success-soft)' : 'var(--danger-soft)',
+            color: message.type === 'success' ? 'var(--success)' : 'var(--danger)',
+          }}
+        >
+          {message.type === 'success' ? (
+            <CheckCircle2 style={{ width: 20, height: 20 }} className="flex-none" aria-hidden="true" />
+          ) : (
+            <AlertCircle style={{ width: 20, height: 20 }} className="flex-none" aria-hidden="true" />
+          )}
+          <p className="ds-body-sm font-semibold">{message.text}</p>
         </div>
       )}
 
-      {/* Backup & Restore */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Backup & Restore</h2>
+      <section className="flex flex-col gap-3">
+        <h2 className="ds-eyebrow">Appearance</h2>
+        <div className="ds-card">
+          {/* data-theme on <html> is the only theme switch in the app. */}
+          <div className="ds-segment" role="group" aria-label="Theme">
+            {(['light', 'dark', 'system'] as ThemeChoice[]).map((choice) => (
+              <button
+                key={choice}
+                type="button"
+                aria-pressed={theme === choice}
+                onClick={() => chooseTheme(choice)}
+              >
+                {choice === 'system' ? 'System' : choice === 'light' ? 'Light' : 'Dark'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
 
-        <div className="card space-y-4">
+      <section className="flex flex-col gap-3">
+        <h2 className="ds-eyebrow">Backup</h2>
+
+        <div className="ds-card flex flex-col gap-4">
           <div>
-            <h3 className="font-bold text-slate-900 dark:text-white mb-2">Export Data</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-              Download your shopping data as a JSON file. You can use this to back up your data or transfer it to another device.
+            <h3 className="ds-heading">Export</h3>
+            <p className="ds-body-sm ds-muted mt-1">
+              Downloads everything as one JSON file. Worth doing before you fly.
             </p>
             <button
+              type="button"
+              className="ds-btn ds-btn--primary mt-3"
               onClick={handleExport}
-              disabled={exporting}
-              className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={busy !== null}
             >
-              <Download className="w-4 h-4" />
-              {exporting ? 'Exporting...' : 'Export Data'}
+              <Download style={{ width: 18, height: 18 }} aria-hidden="true" />
+              {busy === 'export' ? 'Exporting…' : 'Export backup'}
             </button>
           </div>
 
-          <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-            <h3 className="font-bold text-slate-900 dark:text-white mb-2">Import Data</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-              Restore your shopping data from a previously exported JSON file. This will replace your current data.
+          <hr className="ds-divider" />
+
+          <div>
+            <h3 className="ds-heading">Import</h3>
+            <p className="ds-body-sm ds-muted mt-1">
+              Restores from an exported file. This replaces everything currently on
+              this device.
             </p>
             <input
               ref={fileInputRef}
               type="file"
-              accept=".json"
+              accept=".json,application/json"
               onChange={handleImport}
-              disabled={importing}
+              disabled={busy !== null}
               className="hidden"
             />
             <button
+              type="button"
+              className="ds-btn ds-btn--secondary mt-3"
               onClick={() => fileInputRef.current?.click()}
-              disabled={importing}
-              className="btn-secondary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={busy !== null}
             >
-              <Upload className="w-4 h-4" />
-              {importing ? 'Importing...' : 'Import Data'}
+              <Upload style={{ width: 18, height: 18 }} aria-hidden="true" />
+              {busy === 'import' ? 'Importing…' : 'Import backup'}
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* About */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white">About</h2>
-        <div className="card space-y-3 text-sm text-slate-600 dark:text-slate-400">
-          <p>
-            <strong className="text-slate-900 dark:text-white">London Shopping</strong> is your personal trip organizer for managing shopping hauls and specific items while in London.
+      <section className="flex flex-col gap-3">
+        <h2 className="ds-eyebrow">About</h2>
+        <div className="ds-card flex flex-col gap-2">
+          <p className="ds-body-sm ds-muted">
+            Everything lives in this browser on this device. No account, no sync, no
+            tracking — so a backup is the only copy.
           </p>
-          <p>
-            All your data is stored locally in your browser. No accounts, no cloud syncing, no tracking.
-          </p>
-          <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-            <p className="text-xs">Version 1.0</p>
-          </div>
+          <p className="ds-caption ds-subtle">Version 1.1</p>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

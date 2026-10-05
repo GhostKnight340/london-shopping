@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { Edit2, ExternalLink, Trash2 } from 'lucide-react';
 import type { Place } from '../types';
 import { useStore } from '../store';
-import { ChevronLeft, MapPin, Edit2, Trash2, ExternalLink } from 'lucide-react';
-import EditPlace from './EditPlace';
 import { openMapsUrl } from '../utils';
+import { scrollToTop, useBackGuard } from '../useBackGuard';
+import ScreenHeader from './ScreenHeader';
+import EditPlace from './EditPlace';
 
 interface PlaceDetailProps {
   place: Place;
@@ -12,108 +14,105 @@ interface PlaceDetailProps {
 
 export default function PlaceDetail({ place, onBack }: PlaceDetailProps) {
   const { goals, deletePlace } = useStore();
-  const [showEdit, setShowEdit] = useState(false);
+  const [editing, setEditing] = useState(false);
 
-  const associatedGoals = goals.filter(g => g.places?.includes(place.id));
+  const linked = goals.filter((g) => g.places?.includes(place.id));
+
+  useBackGuard(editing, () => setEditing(false));
+
+  if (editing) {
+    return (
+      <EditPlace
+        place={place}
+        onBack={() => {
+          setEditing(false);
+          scrollToTop();
+        }}
+      />
+    );
+  }
 
   const handleDelete = () => {
-    if (confirm('Delete this place? Goals associated with it will not be deleted.')) {
-      deletePlace(place.id);
+    const message = linked.length
+      ? `Delete "${place.name}"? It will be removed from ${linked.length} ${
+          linked.length === 1 ? 'goal' : 'goals'
+        }, which are kept.`
+      : `Delete "${place.name}"?`;
+
+    if (confirm(message)) {
+      void deletePlace(place.id);
       onBack();
     }
   };
 
-  if (showEdit) {
-    return <EditPlace place={place} onBack={() => setShowEdit(false)} />;
-  }
-
   return (
-    <div className="w-full p-4 sm:p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={onBack}
-          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-        >
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex-1">{place.name}</h1>
-        <button
-          onClick={() => setShowEdit(true)}
-          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-        >
-          <Edit2 className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Location Info */}
-      <div className="card space-y-3">
-        {place.address && (
-          <div className="flex gap-3">
-            <MapPin className="w-5 h-5 text-slate-600 dark:text-slate-400 flex-shrink-0" />
-            <div>
-              <p className="text-xs text-slate-600 dark:text-slate-400">Address</p>
-              <p className="font-medium text-slate-900 dark:text-white">{place.address}</p>
-            </div>
-          </div>
-        )}
-
-        {place.area && (
-          <div>
-            <p className="text-xs text-slate-600 dark:text-slate-400">Area / Neighborhood</p>
-            <p className="font-medium text-slate-900 dark:text-white">{place.area}</p>
-          </div>
-        )}
-
-        {place.mapsUrl && (
+    <div className="ds-screen" style={{ gap: 'var(--space-6)' }}>
+      <ScreenHeader
+        title={place.name}
+        onBack={onBack}
+        action={
           <button
-            onClick={() => openMapsUrl(place.mapsUrl, place.name)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium transition-colors"
+            type="button"
+            className="ds-icon-btn"
+            onClick={() => {
+              setEditing(true);
+              scrollToTop();
+            }}
+            aria-label="Edit place"
           >
-            <ExternalLink className="w-4 h-4" />
-            Open in Google Maps
+            <Edit2 style={{ width: 20, height: 20 }} aria-hidden="true" />
           </button>
-        )}
-      </div>
+        }
+        subtitle={place.area ? <p className="ds-body ds-muted">{place.area}</p> : undefined}
+      />
 
-      {/* Notes */}
+      <section className="ds-card flex flex-col gap-4">
+        {place.address && (
+          <div>
+            <p className="ds-eyebrow">Address</p>
+            <p className="ds-body mt-1">{place.address}</p>
+          </div>
+        )}
+
+        {/* Always offered: without a saved URL it searches the name, which is
+            what the old fallback did silently. */}
+        <button
+          type="button"
+          className="ds-btn ds-btn--secondary ds-btn--block"
+          onClick={() => openMapsUrl(place.mapsUrl, place.name)}
+        >
+          <ExternalLink style={{ width: 18, height: 18 }} aria-hidden="true" />
+          Open in Maps
+        </button>
+      </section>
+
       {place.notes && (
-        <div className="card">
-          <h3 className="font-bold text-slate-900 dark:text-white mb-2">Notes</h3>
-          <p className="text-slate-600 dark:text-slate-400">{place.notes}</p>
-        </div>
+        <section className="ds-card">
+          <h2 className="ds-heading mb-2">Notes</h2>
+          <p className="ds-body ds-muted">{place.notes}</p>
+        </section>
       )}
 
-      {/* Associated Goals */}
-      {associatedGoals.length > 0 && (
-        <div className="card">
-          <h3 className="font-bold text-slate-900 dark:text-white mb-3">
-            Associated Goals ({associatedGoals.length})
-          </h3>
-          <div className="space-y-2">
-            {associatedGoals.map(goal => (
-              <div
-                key={goal.id}
-                className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800"
-              >
-                <p className="font-medium text-slate-900 dark:text-white">{goal.title}</p>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                  {goal.type === 'HAUL' ? '🛍️ Haul' : '📦 Item'}
-                </p>
+      {linked.length > 0 && (
+        <section className="ds-card">
+          <h2 className="ds-heading mb-3">Goals here · {linked.length}</h2>
+          <div className="flex flex-col gap-1">
+            {linked.map((goal) => (
+              <div key={goal.id} className="ds-inset">
+                <p className="ds-body-sm font-semibold truncate">{goal.title}</p>
+                <p className="ds-caption ds-muted">{goal.type === 'HAUL' ? 'Haul' : 'Item'}</p>
               </div>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Delete */}
-      <button
-        onClick={handleDelete}
-        className="w-full px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
-      >
-        <Trash2 className="w-4 h-4" />
-        Delete Place
-      </button>
+      <section style={{ marginTop: 'var(--space-6)' }}>
+        <button type="button" className="ds-btn ds-btn--danger ds-btn--block" onClick={handleDelete}>
+          <Trash2 style={{ width: 18, height: 18 }} aria-hidden="true" />
+          Delete place
+        </button>
+      </section>
     </div>
   );
 }

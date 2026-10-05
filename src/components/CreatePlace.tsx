@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import type { Place } from '../types';
-import { ChevronLeft } from 'lucide-react';
+import ScreenHeader from './ScreenHeader';
 
 interface CreatePlaceProps {
   onBack: () => void;
@@ -10,24 +10,28 @@ interface CreatePlaceProps {
 export default function CreatePlace({ onBack }: CreatePlaceProps) {
   const { trip, addPlace } = useStore();
   const [name, setName] = useState('');
-  const [address, setAddress] = useState('');
   const [area, setArea] = useState('');
+  const [address, setAddress] = useState('');
   const [mapsUrl, setMapsUrl] = useState('');
   const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
 
   if (!trip) return null;
 
+  const canSave = name.trim().length > 0 && !saving;
+
   const handleCreate = async () => {
-    if (!name.trim()) return;
+    if (!canSave) return;
+    setSaving(true);
 
     const place: Place = {
       id: `place-${Date.now()}`,
       tripId: trip.id,
-      name,
-      address,
-      area,
-      mapsUrl,
-      notes,
+      name: name.trim(),
+      area: area.trim() || undefined,
+      address: address.trim() || undefined,
+      mapsUrl: mapsUrl.trim() || undefined,
+      notes: notes.trim() || undefined,
       createdAt: Date.now(),
     };
 
@@ -36,91 +40,96 @@ export default function CreatePlace({ onBack }: CreatePlaceProps) {
   };
 
   return (
-    <div className="w-full p-4 sm:p-6 space-y-6 pb-32">
-      <div className="flex items-center gap-4">
-        <button
-          onClick={onBack}
-          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-        >
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Add Place</h1>
-      </div>
+    <div className="ds-screen" style={{ gap: 'var(--space-6)' }}>
+      <ScreenHeader title="Add a place" onBack={onBack} />
 
-      <div className="card space-y-4">
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
-            Place Name *
+      <div className="ds-card flex flex-col gap-4">
+        <div className="ds-field">
+          <label className="ds-label" htmlFor="place-name">
+            Name (required)
           </label>
           <input
+            id="place-name"
+            className="ds-input"
             type="text"
             value={name}
+            autoFocus
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g., Harrods, Camden Market"
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Japan Centre"
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
-            Address
+        <div className="ds-field">
+          <label className="ds-label" htmlFor="place-area">
+            Area
           </label>
           <input
-            type="text"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="Street address (optional)"
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
-            Area / Neighborhood
-          </label>
-          <input
+            id="place-area"
+            className="ds-input"
             type="text"
             value={area}
             onChange={(e) => setArea(e.target.value)}
-            placeholder="e.g., Knightsbridge, Soho, Oxford Street"
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Soho"
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
-            Google Maps URL
+        <div className="ds-field">
+          <label className="ds-label" htmlFor="place-address">
+            Address
           </label>
           <input
-            type="url"
-            value={mapsUrl}
-            onChange={(e) => setMapsUrl(e.target.value)}
-            placeholder="https://maps.google.com/?q=..."
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            id="place-address"
+            className="ds-input"
+            type="text"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="35–37 Panton St"
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
+        <div className="ds-field">
+          <label className="ds-label" htmlFor="place-maps">
+            Maps link
+          </label>
+          <input
+            id="place-maps"
+            className="ds-input"
+            type="url"
+            inputMode="url"
+            autoCapitalize="off"
+            spellCheck={false}
+            value={mapsUrl}
+            onChange={(e) => setMapsUrl(e.target.value)}
+            placeholder="https://maps.app.goo.gl/…"
+          />
+          <p className="ds-hint">Optional — without it, Maps searches the name.</p>
+        </div>
+
+        <div className="ds-field">
+          <label className="ds-label" htmlFor="place-notes">
             Notes
           </label>
           <textarea
+            id="place-notes"
+            className="ds-input"
+            rows={3}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Hours, parking, tips..."
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-20"
+            placeholder="Opening hours, which floor, cash only"
           />
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-4 sm:relative sm:border-t-0">
+      <div className="ds-actionbar">
         <button
-          onClick={handleCreate}
-          disabled={!name.trim()}
-          className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+          type="button"
+          className="ds-btn ds-btn--primary ds-btn--lg ds-btn--block"
+          disabled={!canSave}
+          onClick={() => void handleCreate()}
         >
-          Add Place
+          {saving ? 'Saving…' : 'Add place'}
         </button>
+        {!name.trim() && <p className="ds-hint text-center">A name is all it needs.</p>}
       </div>
     </div>
   );

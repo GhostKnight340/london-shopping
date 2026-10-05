@@ -1,61 +1,51 @@
 import { Home, ShoppingCart, MapPin, CheckCircle2, Settings } from 'lucide-react';
-
-type Screen = 'home' | 'shopping' | 'places' | 'bought' | 'settings';
+import type { Screen } from '../App';
 
 interface NavigationProps {
   activeScreen: Screen;
   onNavigate: (screen: Screen) => void;
 }
 
+const ICON = { width: 24, height: 24 } as const;
+
 export default function Navigation({ activeScreen, onNavigate }: NavigationProps) {
   const items: Array<{ screen: Screen; label: string; icon: React.ReactNode }> = [
-    { screen: 'home', label: 'Home', icon: <Home className="w-6 h-6" /> },
-    { screen: 'shopping', label: 'Shopping', icon: <ShoppingCart className="w-6 h-6" /> },
-    { screen: 'places', label: 'Places', icon: <MapPin className="w-6 h-6" /> },
-    { screen: 'bought', label: 'Bought', icon: <CheckCircle2 className="w-6 h-6" /> },
-    { screen: 'settings', label: 'Settings', icon: <Settings className="w-6 h-6" /> },
+    { screen: 'home', label: 'Home', icon: <Home style={ICON} /> },
+    { screen: 'shopping', label: 'Shopping', icon: <ShoppingCart style={ICON} /> },
+    { screen: 'places', label: 'Places', icon: <MapPin style={ICON} /> },
+    { screen: 'bought', label: 'Bought', icon: <CheckCircle2 style={ICON} /> },
+    { screen: 'settings', label: 'Settings', icon: <Settings style={ICON} /> },
   ];
 
   return (
-    <>
-      {/* Mobile Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 sm:hidden">
-        <div className="flex justify-around">
-          {items.map(({ screen, label, icon }) => (
+    /*
+     * One bar for both breakpoints. The safe-area inset lives on the bar itself
+     * (see .ds-tabbar) — padding the body cannot move a fixed element off the
+     * home indicator, which is where the labels used to sit.
+     *
+     * On desktop the row is constrained to the same content column as the
+     * screens, so nav and content finally line up.
+     */
+    <nav className="ds-tabbar sm:order-first" aria-label="Main">
+      <div className="flex w-full sm:max-w-content sm:mx-auto sm:px-6">
+        {items.map(({ screen, label, icon }) => {
+          const active = activeScreen === screen;
+          return (
             <button
               key={screen}
+              type="button"
+              className="ds-tab sm:flex-row sm:gap-2 sm:text-sm"
               onClick={() => onNavigate(screen)}
-              className={`flex-1 flex flex-col items-center justify-center py-3 px-2 transition-colors ${
-                activeScreen === screen
-                  ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-              aria-label={label}
+              // Active state is colour + weight + a dot. Colour alone is not a state.
+              aria-current={active ? 'page' : undefined}
             >
               {icon}
-              <span className="text-xs mt-1 font-medium">{label}</span>
+              <span>{label}</span>
+              <span className="ds-tab-dot sm:hidden" aria-hidden="true" />
             </button>
-          ))}
-        </div>
-      </nav>
-
-      {/* Desktop Top Nav */}
-      <nav className="hidden sm:flex bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 gap-8">
-        {items.map(({ screen, label, icon }) => (
-          <button
-            key={screen}
-            onClick={() => onNavigate(screen)}
-            className={`flex items-center gap-2 py-2 px-3 rounded-lg transition-colors ${
-              activeScreen === screen
-                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            {icon}
-            <span className="font-medium">{label}</span>
-          </button>
-        ))}
-      </nav>
-    </>
+          );
+        })}
+      </div>
+    </nav>
   );
 }

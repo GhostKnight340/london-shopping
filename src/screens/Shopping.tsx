@@ -1,151 +1,141 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
 import { useStore } from '../store';
 import type { ShoppingGoal } from '../types';
-import { Plus } from 'lucide-react';
+import { isDone } from '../utils';
+import { scrollToTop, useBackGuard } from '../useBackGuard';
+import GoalCard from '../components/GoalCard';
 import HaulDetail from '../components/HaulDetail';
 import ItemDetail from '../components/ItemDetail';
 import CreateGoal from '../components/CreateGoal';
 
 interface ShoppingProps {
-  onNavigate: (screen: 'home' | 'shopping' | 'places' | 'bought' | 'settings') => void;
+  initialGoalId?: string | null;
+  onConsumeInitialGoal?: () => void;
 }
 
-export default function Shopping({ onNavigate }: ShoppingProps) {
-  const { goals } = useStore();
-  const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
+export default function Shopping({ initialGoalId, onConsumeInitialGoal }: ShoppingProps) {
+  const { trip, goals } = useStore();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
-  const selectedGoalData = selectedGoal ? goals.find(g => g.id === selectedGoal) : null;
+  const currency = trip?.currency || 'GBP';
+  const selected = selectedId ? goals.find((g) => g.id === selectedId) : null;
 
-  if (selectedGoalData) {
-    return selectedGoalData.type === 'HAUL' ? (
-      <HaulDetail
-        haul={selectedGoalData as ShoppingGoal}
-        onBack={() => setSelectedGoal(null)}
-      />
+  // Opened from another screen (a haul card on Home).
+  useEffect(() => {
+    if (initialGoalId) {
+      setSelectedId(initialGoalId);
+      onConsumeInitialGoal?.();
+    }
+  }, [initialGoalId, onConsumeInitialGoal]);
+
+  // The device back gesture closes the open view instead of leaving the app.
+  useBackGuard(Boolean(selected), () => setSelectedId(null));
+  useBackGuard(creating, () => setCreating(false));
+
+  const open = (id: string) => {
+    setSelectedId(id);
+    scrollToTop();
+  };
+
+  const close = () => {
+    setSelectedId(null);
+    scrollToTop();
+  };
+
+  if (selected) {
+    return selected.type === 'HAUL' ? (
+      <HaulDetail haul={selected as ShoppingGoal} onBack={close} />
     ) : (
-      <ItemDetail
-        item={selectedGoalData as ShoppingGoal}
-        onBack={() => setSelectedGoal(null)}
-      />
+      <ItemDetail item={selected as ShoppingGoal} onBack={close} />
     );
   }
 
-  if (showCreate) {
+  if (creating) {
     return (
       <CreateGoal
-        onBack={() => setShowCreate(false)}
-        onNavigate={onNavigate}
+        onBack={() => {
+          setCreating(false);
+          scrollToTop();
+        }}
+        onCreated={(id) => {
+          setCreating(false);
+          open(id);
+        }}
       />
     );
   }
 
-  const sortedGoals = [...goals].sort((a, b) => {
-    // Not completed first
-    if (a.status !== 'completed' && b.status === 'completed') return -1;
-    if (a.status === 'completed' && b.status !== 'completed') return 1;
+  const sorted = [...goals].sort((a, b) => {
+    if (isDone(a) !== isDone(b)) return isDone(a) ? 1 : -1;
     return b.createdAt - a.createdAt;
   });
 
-  const hauls = sortedGoals.filter(g => g.type === 'HAUL');
-  const items = sortedGoals.filter(g => g.type === 'ITEM');
+  const hauls = sorted.filter((g) => g.type === 'HAUL');
+  const items = sorted.filter((g) => g.type === 'ITEM');
 
   return (
-    <div className="w-full p-4 sm:p-6 space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Shopping</h1>
+    <div className="ds-screen">
+      <header className="flex items-center justify-between gap-3">
+        <h1 className="ds-display">Shopping</h1>
         <button
-          onClick={() => setShowCreate(true)}
-          className="btn-primary btn-sm flex items-center gap-2"
+          type="button"
+          className="ds-btn ds-btn--primary ds-btn--sm"
+          onClick={() => {
+            setCreating(true);
+            scrollToTop();
+          }}
         >
-          <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">Add Goal</span>
+          <Plus style={{ width: 18, height: 18 }} aria-hidden="true" />
+          Add goal
         </button>
-      </div>
+      </header>
 
-      {/* Hauls */}
       {hauls.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-            Hauls ({hauls.length})
-          </h2>
-          <div className="space-y-2">
-            {hauls.map(haul => (
-              <button
+        <section className="flex flex-col gap-3">
+          <h2 className="ds-eyebrow">Hauls · {hauls.length}</h2>
+          <div className="flex flex-col gap-2">
+            {hauls.map((haul) => (
+              <GoalCard
                 key={haul.id}
-                onClick={() => setSelectedGoal(haul.id)}
-                className="w-full card hover:shadow-md transition-all text-left"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-slate-900 dark:text-white">{haul.title}</h3>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                      {haul.status === 'completed' && '✓ Completed'}
-                      {haul.status === 'in-progress' && '◐ In progress'}
-                      {haul.status === 'not-started' && '○ Not started'}
-                      {haul.status === 'skipped' && '✗ Skipped'}
-                    </p>
-                  </div>
-                  <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                    £{haul.actualCost.toFixed(2)}
-                  </span>
-                </div>
-              </button>
+                goal={haul}
+                currency={currency}
+                onOpen={() => open(haul.id)}
+              />
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Items */}
       {items.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-            Items ({items.length})
-          </h2>
-          <div className="space-y-2">
-            {items.map(item => (
-              <button
+        <section className="flex flex-col gap-3">
+          <h2 className="ds-eyebrow">Items · {items.length}</h2>
+          <div className="flex flex-col gap-2">
+            {items.map((item) => (
+              <GoalCard
                 key={item.id}
-                onClick={() => setSelectedGoal(item.id)}
-                className="w-full card hover:shadow-md transition-all text-left"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-bold text-slate-900 dark:text-white">{item.title}</h3>
-                    <div className="flex gap-2 mt-1">
-                      <span className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                        {item.priority === 'must-buy' && '🔴 Must buy'}
-                        {item.priority === 'want' && '🟡 Want'}
-                        {item.priority === 'maybe' && '⚪ Maybe'}
-                      </span>
-                      <span className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                        {item.status === 'bought' && '✓ Bought'}
-                        {item.status === 'found' && '◐ Found'}
-                        {item.status === 'want' && '○ Want'}
-                        {item.status === 'skipped' && '✗ Skipped'}
-                      </span>
-                    </div>
-                  </div>
-                  {item.estimatedCost && (
-                    <span className="text-sm font-bold text-blue-600 dark:text-blue-400 ml-2">
-                      £{item.estimatedCost.toFixed(2)}
-                    </span>
-                  )}
-                </div>
-              </button>
+                goal={item}
+                currency={currency}
+                onOpen={() => open(item.id)}
+              />
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {sortedGoals.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-slate-600 dark:text-slate-400 mb-4">No shopping goals yet</p>
+      {sorted.length === 0 && (
+        <div className="ds-empty">
+          <p className="ds-body ds-muted">
+            Nothing in the plan yet. A haul is a shop to browse; an item is one
+            thing to find.
+          </p>
           <button
-            onClick={() => setShowCreate(true)}
-            className="btn-primary"
+            type="button"
+            className="ds-btn ds-btn--primary"
+            onClick={() => setCreating(true)}
           >
-            Create your first goal
+            Add your first goal
           </button>
         </div>
       )}

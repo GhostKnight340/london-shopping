@@ -2,112 +2,807 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  transition-colors: 200ms;
-}
+/* ===========================================================================
+   Tokens. One source of truth for both themes.
+   The theme is driven by data-theme on <html> (see src/theme.ts) and NOT by a
+   .dark class or by prefers-color-scheme in the components, so there is nothing
+   left to disagree.
+   =========================================================================== */
 
-body {
-  font-family: system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+@layer base {
+  :root,
+  [data-theme='light'] {
+    --page: #f6f7f9;
+    --surface: #ffffff;
+    --surface-raised: #ffffff;
+    --surface-sunken: #eef1f5;
 
-html {
-  scroll-behavior: smooth;
-}
+    --border: #e3e8ef;
+    --border-strong: #79859a;
 
-#root {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
+    --ink: #0f172a;
+    --ink-muted: #475569;
+    --ink-subtle: #5b6878;
+    --ink-inverse: #ffffff;
 
-.card {
-  background-color: white;
-  border-radius: 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  padding: 1.5rem;
-  border: 1px solid #f3f4f6;
-}
+    --brand: #2563eb;
+    --brand-pressed: #1d4ed8;
+    --brand-soft: #eaf1fe;
+    --on-brand: #ffffff;
 
-.dark .card {
-  background-color: #111827;
-  border-color: #1f2937;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
+    --success: #15803d;
+    --success-soft: #eaf8ef;
+    --on-success: #ffffff;
 
-.btn-primary {
-  padding: 0.75rem 1rem;
-  background-color: #2563eb;
-  color: white;
-  border-radius: 0.75rem;
-  font-weight: 500;
-  transition-colors: 200ms;
-  border: none;
-  cursor: pointer;
-}
+    --danger: #b91c1c;
+    --danger-soft: #fdecec;
+    --on-danger: #ffffff;
 
-.btn-primary:hover {
-  background-color: #1d4ed8;
-}
+    --warn: #b45309;
+    --warn-soft: #fdf3e3;
+    --on-warn: #ffffff;
 
-.btn-primary:active {
-  transform: scale(0.95);
-}
+    --focus: #2563eb;
+    --track: #dfe4ec;
+    --overlay: #0f172acc;
 
-.btn-secondary {
-  padding: 0.75rem 1rem;
-  background-color: #f3f4f6;
-  color: #111827;
-  border-radius: 0.75rem;
-  font-weight: 500;
-  transition-colors: 200ms;
-  border: none;
-  cursor: pointer;
-}
+    --tag-rose: #9f1239;
+    --tag-rose-soft: #ffe4e9;
+    --tag-indigo: #3730a3;
+    --tag-indigo-soft: #e6e8fd;
+    --tag-amber: #8a5209;
+    --tag-amber-soft: #fcf0dc;
+    --tag-teal: #0f6b6b;
+    --tag-teal-soft: #dff2f1;
 
-.dark .btn-secondary {
-  background-color: #1f2937;
-  color: #f9fafb;
-}
+    --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+    --shadow-raised: 0 6px 16px -4px rgba(15, 23, 42, 0.12), 0 2px 6px -2px rgba(15, 23, 42, 0.08);
+    --shadow-bar: 0 -1px 0 rgba(15, 23, 42, 0.08), 0 -10px 24px -14px rgba(15, 23, 42, 0.22);
 
-.btn-secondary:hover {
-  background-color: #e5e7eb;
-}
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
 
-.dark .btn-secondary:hover {
-  background-color: #374151;
-}
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-pill: 999px;
 
-.btn-secondary:active {
-  transform: scale(0.95);
-}
+    --tap-min: 44px;
+    --control-sm: 44px;
+    --control-md: 48px;
+    --control-lg: 56px;
+    --bar-height: 56px;
+    --ring-width: 2px;
+    --ring-offset: 2px;
+    --hairline: 1px;
+    --content-max: 560px;
 
-.btn-sm {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  border-radius: 0.5rem;
-  font-weight: 500;
-  transition-colors: 200ms;
-  border: none;
-  cursor: pointer;
-  background-color: #2563eb;
-  color: white;
-}
+    --disabled: 0.45;
+    --pressed: 0.92;
 
-.btn-sm:active {
-  transform: scale(0.95);
-}
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 
-button, a, input, textarea, select {
-  touch-action: manipulation;
-}
+    color-scheme: light;
+  }
 
-@media (display-mode: standalone) {
+  [data-theme='dark'] {
+    --page: #0b1120;
+    --surface: #161d2d;
+    --surface-raised: #1f2839;
+    --surface-sunken: #0f1627;
+
+    --border: #2a3345;
+    --border-strong: #6b7889;
+
+    --ink: #f8fafc;
+    --ink-muted: #9aa8bd;
+    --ink-subtle: #8290a6;
+    --ink-inverse: #0b1120;
+
+    --brand: #6ea8fe;
+    --brand-pressed: #8dbbff;
+    --brand-soft: #15243d;
+    --on-brand: #0b1120;
+
+    --success: #52d07f;
+    --success-soft: #12291b;
+    --on-success: #0b1120;
+
+    --danger: #ff8f8f;
+    --danger-soft: #2e1618;
+    --on-danger: #0b1120;
+
+    --warn: #f0b429;
+    --warn-soft: #2b2008;
+    --on-warn: #0b1120;
+
+    --focus: #6ea8fe;
+    --track: #2a3345;
+    --overlay: #020617e6;
+
+    --tag-rose: #ffb3c1;
+    --tag-rose-soft: #3a111b;
+    --tag-indigo: #aab4fd;
+    --tag-indigo-soft: #1a1b43;
+    --tag-amber: #f4c15c;
+    --tag-amber-soft: #2a2008;
+    --tag-teal: #5ed3cf;
+    --tag-teal-soft: #07282a;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-raised: 0 10px 28px -8px rgba(0, 0, 0, 0.75);
+    --shadow-bar: 0 -1px 0 rgba(255, 255, 255, 0.07);
+
+    color-scheme: dark;
+  }
+
+  html {
+    /* No smooth scroll: screens are swapped, not scrolled to, and smooth
+       scrolling made every tab change slide through the previous offset. */
+    background: var(--page);
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 24px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior-y: none;
+  }
+
+  #root {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    touch-action: manipulation;
+  }
+
+  ::selection {
+    background: var(--brand-soft);
+  }
+}
+
+/* ===========================================================================
+   Components. In @layer components so any Tailwind utility still wins over
+   them — the old file put .card after @tailwind utilities, which is why
+   `card bg-red-50` rendered white.
+   =========================================================================== */
+
+@layer components {
+  .ds-num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  /* --- type scale ------------------------------------------------------- */
+  .ds-display {
+    font-size: 28px;
+    line-height: 32px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .ds-title {
+    font-size: 22px;
+    line-height: 28px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .ds-heading {
+    font-size: 17px;
+    line-height: 24px;
+    font-weight: 700;
+  }
+  .ds-body {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .ds-body-sm {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .ds-caption {
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 500;
+  }
+  .ds-eyebrow {
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  .ds-money-xl {
+    font-size: 34px;
+    line-height: 36px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .ds-money {
+    font-size: 20px;
+    line-height: 24px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .ds-money-sm {
+    font-size: 15px;
+    line-height: 20px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* --- layout ----------------------------------------------------------- */
+  .ds-screen {
+    width: 100%;
+    max-width: var(--content-max);
+    margin: 0 auto;
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+  @media (min-width: 640px) {
+    .ds-screen {
+      padding: var(--space-6);
+    }
+  }
+
+  /* --- surfaces --------------------------------------------------------- */
+  .ds-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    box-shadow: var(--shadow-card);
+  }
+  .ds-card--compact {
+    padding: var(--space-3);
+  }
+  .ds-card--flush {
+    padding: 0;
+    overflow: hidden;
+  }
+  .ds-inset {
+    background: var(--surface-sunken);
+    border-radius: var(--radius-sm);
+    padding: var(--space-3);
+  }
+  .ds-divider {
+    height: var(--hairline);
+    background: var(--border);
+    border: 0;
+    margin: 0;
+  }
+
+  .ds-muted {
+    color: var(--ink-muted);
+  }
+  .ds-subtle {
+    color: var(--ink-subtle);
+  }
+
+  /* --- buttons ---------------------------------------------------------- */
+  .ds-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: var(--control-md);
+    min-width: var(--tap-min);
+    padding: 0 var(--space-4);
+    border: var(--hairline) solid transparent;
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 24px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 150ms ease, border-color 150ms ease, opacity 150ms ease;
+  }
+  .ds-btn--primary {
+    background: var(--brand);
+    color: var(--on-brand);
+  }
+  .ds-btn--primary:hover {
+    background: var(--brand-pressed);
+  }
+  .ds-btn--primary:active {
+    background: var(--brand-pressed);
+    opacity: var(--pressed);
+  }
+  .ds-btn--secondary {
+    background: var(--surface-sunken);
+    color: var(--ink);
+    border-color: var(--border);
+  }
+  .ds-btn--secondary:hover {
+    border-color: var(--border-strong);
+  }
+  .ds-btn--secondary:active {
+    opacity: var(--pressed);
+  }
+  .ds-btn--ghost {
+    background: transparent;
+    color: var(--brand);
+  }
+  .ds-btn--ghost:hover {
+    background: var(--brand-soft);
+  }
+  .ds-btn--danger {
+    background: transparent;
+    color: var(--danger);
+  }
+  .ds-btn--danger:hover {
+    background: var(--danger-soft);
+  }
+  /* Size modifiers set size only, so `ds-btn--secondary ds-btn--sm` stays
+     secondary. The old btn-sm set background-color and won on source order. */
+  .ds-btn--sm {
+    min-height: var(--control-sm);
+    padding: 0 var(--space-3);
+    font-size: 15px;
+  }
+  .ds-btn--lg {
+    min-height: var(--control-lg);
+    font-size: 17px;
+  }
+  .ds-btn--block {
+    width: 100%;
+  }
+  .ds-btn:disabled {
+    opacity: var(--disabled);
+    cursor: not-allowed;
+  }
+
+  .ds-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: var(--tap-min);
+    height: var(--tap-min);
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 150ms ease;
+  }
+  .ds-icon-btn:hover {
+    background: var(--surface-sunken);
+  }
+
+  /* --- one focus ring, on everything ----------------------------------- */
+  .ds-btn:focus-visible,
+  .ds-icon-btn:focus-visible,
+  .ds-input:focus-visible,
+  .ds-row:focus-visible,
+  .ds-tab:focus-visible,
+  .ds-chip:focus-visible,
+  .ds-tappable:focus-visible,
+  .ds-check:focus-visible,
+  a:focus-visible {
+    outline: var(--ring-width) solid var(--focus);
+    outline-offset: var(--ring-offset);
+  }
+
+  /* --- fields ----------------------------------------------------------- */
+  .ds-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .ds-label {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    color: var(--ink);
+  }
+  .ds-hint {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--ink-muted);
+  }
+  .ds-input {
+    min-height: var(--control-md);
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0 var(--space-3);
+    border: var(--hairline) solid var(--border-strong);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    font-size: 16px; /* below 16px iOS zooms the page on focus */
+    transition: border-color 150ms ease;
+  }
+  textarea.ds-input {
+    padding: 10px var(--space-3);
+    resize: vertical;
+  }
+  .ds-input::placeholder {
+    color: var(--ink-subtle);
+  }
+  .ds-input--invalid {
+    border-color: var(--danger);
+  }
+  .ds-money-input {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .ds-money-input > .ds-prefix {
+    position: absolute;
+    left: var(--space-3);
+    color: var(--ink-muted);
+    pointer-events: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .ds-money-input > .ds-input {
+    padding-left: 30px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ds-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: transparent;
+    cursor: pointer;
+    transition: background-color 150ms ease, border-color 150ms ease;
+  }
+  .ds-check[data-checked='true'],
+  .ds-check[aria-checked='true'] {
+    background: var(--success);
+    border-color: var(--success);
+    color: var(--on-success);
+  }
+
+  /* --- chips ------------------------------------------------------------ */
+  .ds-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--control-lg);
+    padding: 0 var(--space-3);
+    border: var(--hairline) solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--brand-soft);
+    color: var(--brand);
+    font: inherit;
+    font-size: 17px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+  .ds-chip:active {
+    background: var(--brand);
+    color: var(--on-brand);
+  }
+
+  /* --- status pills ----------------------------------------------------- */
+  .ds-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-pill);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 18px;
+    white-space: nowrap;
+  }
+  .ds-pill--neutral {
+    background: var(--surface-sunken);
+    color: var(--ink-muted);
+  }
+  .ds-pill--active {
+    background: var(--brand-soft);
+    color: var(--brand);
+  }
+  .ds-pill--done {
+    background: var(--success-soft);
+    color: var(--success);
+  }
+  .ds-pill--warn {
+    background: var(--warn-soft);
+    color: var(--warn);
+  }
+  .ds-pill--skipped {
+    background: var(--surface-sunken);
+    color: var(--ink-subtle);
+  }
+
+  /* --- segmented control (status / priority pickers) -------------------- */
+  .ds-segment {
+    display: flex;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    background: var(--surface-sunken);
+    border-radius: var(--radius-md);
+  }
+  .ds-segment > button {
+    flex: 1;
+    min-height: var(--tap-min);
+    padding: 0 var(--space-2);
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--ink-muted);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+  .ds-segment > button[aria-pressed='true'] {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* --- progress --------------------------------------------------------- */
+  .ds-progress {
+    height: 8px;
+    border-radius: var(--radius-pill);
+    background: var(--track);
+    overflow: hidden;
+  }
+  .ds-progress > span {
+    display: block;
+    height: 100%;
+    border-radius: var(--radius-pill);
+    background: var(--brand);
+    transition: width 320ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  .ds-progress--done > span {
+    background: var(--success);
+  }
+
+  /* --- rows and tappable cards ----------------------------------------- */
+  .ds-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    min-height: var(--tap-min);
+    padding: var(--space-3);
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ds-row:active {
+    opacity: var(--pressed);
+  }
+  /* Press feedback is opacity, never scale: a 5% scale on a full-width card
+     reads as a glitch and never renders text crisply. */
+  .ds-tappable {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 120ms ease;
+  }
+  .ds-tappable:active {
+    opacity: var(--pressed);
+  }
+  .ds-accent {
+    width: 4px;
+    align-self: stretch;
+    border-radius: var(--radius-pill);
+    flex: none;
+  }
+
+  /* --- bars that stick -------------------------------------------------- */
+  .ds-tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    display: flex;
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-bar);
+    /* The inset has to be on the bar itself. Padding the body cannot move a
+       fixed element off the home indicator. */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .ds-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: var(--bar-height);
+    padding: var(--space-2) var(--space-1);
+    border: 0;
+    background: transparent;
+    color: var(--ink-muted);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 150ms ease;
+  }
+  .ds-tab[aria-current='page'] {
+    color: var(--brand);
+    font-weight: 700;
+  }
+  .ds-tab-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: transparent;
+  }
+  .ds-tab[aria-current='page'] .ds-tab-dot {
+    background: var(--brand);
+  }
+
+  .ds-actionbar {
+    position: sticky;
+    /* Rests on top of the tab bar, not underneath it. */
+    bottom: calc(var(--bar-height) + env(safe-area-inset-bottom, 0px));
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0 calc(var(--space-4) * -1) calc(var(--space-4) * -1);
+    padding: var(--space-4);
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-bar);
+  }
+  /* Inside a full-screen takeover there is no tab bar, so it carries the inset
+     itself and sits at the very bottom. */
+  .ds-actionbar--static {
+    position: static;
+    margin: 0;
+    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  }
+  @media (min-width: 640px) {
+    .ds-actionbar {
+      bottom: 0;
+      padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    }
+  }
+
+  /* Room for the fixed tab bar, tracking the real bar height + inset
+     instead of a hard-coded 80px. */
+  .ds-main {
+    flex: 1;
+    padding-bottom: calc(var(--bar-height) + env(safe-area-inset-bottom, 0px));
+  }
+  @media (min-width: 640px) {
+    .ds-tabbar {
+      position: static;
+      box-shadow: none;
+      padding-bottom: 0;
+    }
+    .ds-main {
+      padding-bottom: 0;
+    }
+  }
+
+  /* --- toast ------------------------------------------------------------ */
+  .ds-toast-slot {
+    position: fixed;
+    left: var(--space-3);
+    right: var(--space-3);
+    bottom: calc(var(--bar-height) + env(safe-area-inset-bottom, 0px) + var(--space-3));
+    z-index: 40;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .ds-toast {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    max-width: var(--content-max);
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-raised);
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 600;
+    pointer-events: auto;
+    animation: ds-rise 200ms ease-out both;
+  }
+  .ds-toast-action {
+    margin-left: auto;
+    min-height: var(--tap-min);
+    padding: 0 var(--space-3);
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--brand);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  @media (min-width: 640px) {
+    .ds-toast-slot {
+      bottom: calc(var(--space-6));
+    }
+  }
+
+  /* --- full-screen takeover -------------------------------------------- */
+  .ds-takeover {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    background: var(--page);
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .ds-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-12) var(--space-4);
+    text-align: center;
+  }
+}
+
+@keyframes ds-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
   }
 }

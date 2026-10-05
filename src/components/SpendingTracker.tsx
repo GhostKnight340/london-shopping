@@ -1,8 +1,11 @@
 import { useState } from 'react';
+import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import type { Transaction } from '../types';
 import { useStore } from '../store';
-import { formatCurrency, formatDate } from '../utils';
-import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { compareToEstimate, formatCurrency, formatDate, parseAmount, tapFeedback } from '../utils';
+import AnimatedMoney from './AnimatedMoney';
+import MoneyInput from './MoneyInput';
+import { useToast } from './Toast';
 
 interface SpendingTrackerProps {
   goalId: string;
@@ -12,6 +15,8 @@ interface SpendingTrackerProps {
   currency: string;
 }
 
+const QUICK_AMOUNTS = [5, 10, 20];
+
 export default function SpendingTracker({
   goalId,
   actualCost,
@@ -20,152 +25,153 @@ export default function SpendingTracker({
   currency,
 }: SpendingTrackerProps) {
   const { addTransaction, removeTransaction } = useStore();
-  const [customAmount, setCustomAmount] = useState('');
+  const { toast } = useToast();
+  const [custom, setCustom] = useState('');
   const [showHistory, setShowHistory] = useState(false);
 
-  const quickAmounts = [5, 10, 20];
+  const parsed = parseAmount(custom);
+  const estimate = compareToEstimate(actualCost, estimatedCost, currency);
 
-  const handleQuickAdd = async (amount: number) => {
-    await addTransaction(goalId, amount);
+  /** Every add is acknowledged and reversible — no confirm, no silent write. */
+  const add = async (amount: number, notes?: string) => {
+    tapFeedback();
+    await addTransaction(goalId, amount, notes);
+    const latest = useStore
+      .getState()
+      .goals.find((g) => g.id === goalId)
+      ?.transactions.at(-1);
+
+    toast(`Added ${formatCurrency(amount, currency)}`, () => {
+      if (latest) void removeTransaction(goalId, latest.id);
+    });
   };
 
-  const handleCustomAdd = async () => {
-    const amount = parseFloat(customAmount);
-    if (amount > 0) {
-      await addTransaction(goalId, amount);
-      setCustomAmount('');
-    }
+  const remove = async (transaction: Transaction) => {
+    await removeTransaction(goalId, transaction.id);
+    // Undo re-adds the amount and its note. The timestamp becomes "now" — the
+    // alternative was a blocking confirm on a reversible action.
+    toast(`Removed ${formatCurrency(transaction.amount, currency)}`, () => {
+      void addTransaction(goalId, transaction.amount, transaction.notes);
+    });
   };
-
-  const handleRemoveTransaction = async (transactionId: string) => {
-    if (confirm('Remove this transaction?')) {
-      await removeTransaction(goalId, transactionId);
-    }
-  };
-
-  const difference = estimatedCost ? actualCost - estimatedCost : 0;
-  const overspent = difference > 0;
 
   return (
-    <div className="card space-y-4">
+    <div className="ds-card flex flex-col gap-4">
       <div>
-        <h3 className="font-bold text-slate-900 dark:text-white mb-3">Spending</h3>
-
-        {/* Summary */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div>
-            <p className="text-xs text-slate-600 dark:text-slate-400">Actual</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">
-              {formatCurrency(actualCost, currency)}
-            </p>
-          </div>
-          {estimatedCost && (
-            <div>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                Estimated
-              </p>
-              <div>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                  {formatCurrency(estimatedCost, currency)}
-                </p>
-                <p className={`text-xs font-medium mt-1 ${
-                  overspent ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
-                }`}>
-                  {overspent ? '+' : '-'}{formatCurrency(Math.abs(difference), currency)}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
+        <p className="ds-eyebrow">Spent</p>
+        <p className="mt-1">
+          <AnimatedMoney value={actualCost} currency={currency} />
+        </p>
+        {estimate && (
+          <p
+            className="ds-caption ds-num mt-1 font-semibold"
+            style={{ color: estimate.tone === 'danger' ? 'var(--danger)' : 'var(--ink-muted)' }}
+          >
+            {estimate.text}
+          </p>
+        )}
       </div>
 
-      {/* Quick Add Buttons */}
-      <div className="space-y-2">
-        <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Quick Add</p>
+      <div>
+        <p className="ds-eyebrow mb-2">Quick add</p>
         <div className="grid grid-cols-3 gap-2">
-          {quickAmounts.map(amount => (
+          {QUICK_AMOUNTS.map((amount) => (
             <button
               key={amount}
-              onClick={() => handleQuickAdd(amount)}
-              className="py-2 px-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold transition-colors active:scale-95"
+              type="button"
+              className="ds-chip"
+              onClick={() => void add(amount)}
             >
-              +£{amount}
+              +{formatCurrency(amount, currency).replace(/\.00$/, '')}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Custom Amount */}
-      <div className="space-y-2">
-        <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Custom Amount</p>
+      <div className="ds-field">
+        <label className="ds-label" htmlFor={`amount-${goalId}`}>
+          Other amount
+        </label>
         <div className="flex gap-2">
-          <div className="relative flex-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400">£</span>
-            <input
-              type="number"
-              value={customAmount}
-              onChange={(e) => setCustomAmount(e.target.value)}
-              placeholder="0.00"
-              className="w-full pl-6 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              step="0.01"
+          <div className="flex-1">
+            <MoneyInput
+              id={`amount-${goalId}`}
+              value={custom}
+              onChange={setCustom}
+              currency={currency}
+              onEnter={() => {
+                if (parsed) {
+                  void add(parsed);
+                  setCustom('');
+                }
+              }}
             />
           </div>
           <button
-            onClick={handleCustomAdd}
-            disabled={!customAmount || parseFloat(customAmount) <= 0}
-            className="btn-primary px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            type="button"
+            className="ds-btn ds-btn--primary"
+            disabled={!parsed}
+            onClick={() => {
+              if (!parsed) return;
+              void add(parsed);
+              setCustom('');
+            }}
           >
             Add
           </button>
         </div>
+        {custom && !parsed && (
+          <p className="ds-hint" style={{ color: 'var(--danger)' }}>
+            Enter an amount above 0.
+          </p>
+        )}
       </div>
 
-      {/* Transaction History */}
       {transactions.length > 0 && (
-        <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+        <div>
+          <hr className="ds-divider mb-3" />
           <button
-            onClick={() => setShowHistory(!showHistory)}
-            className="w-full flex items-center justify-between text-left"
+            type="button"
+            className="ds-row justify-between"
+            style={{ padding: 0, minHeight: 'var(--tap-min)', background: 'transparent' }}
+            onClick={() => setShowHistory((v) => !v)}
+            aria-expanded={showHistory}
           >
-            <p className="text-sm font-bold text-slate-900 dark:text-white">
-              Transaction History ({transactions.length})
-            </p>
+            <span className="ds-body-sm font-semibold">
+              {transactions.length} {transactions.length === 1 ? 'entry' : 'entries'}
+            </span>
             {showHistory ? (
-              <ChevronUp className="w-4 h-4" />
+              <ChevronUp style={{ width: 18, height: 18 }} aria-hidden="true" />
             ) : (
-              <ChevronDown className="w-4 h-4" />
+              <ChevronDown style={{ width: 18, height: 18 }} aria-hidden="true" />
             )}
           </button>
 
           {showHistory && (
-            <div className="mt-3 space-y-2">
-              {[...transactions].reverse().map(transaction => (
-                <div
-                  key={transaction.id}
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <div className="flex-1">
-                    <p className="font-medium text-slate-900 dark:text-white">
+            <ul className="flex flex-col gap-1 mt-2 list-none p-0 m-0">
+              {[...transactions].reverse().map((transaction) => (
+                <li key={transaction.id} className="flex items-center gap-2 ds-inset">
+                  <span className="flex-1 min-w-0">
+                    <span className="ds-money-sm block">
                       {formatCurrency(transaction.amount, currency)}
-                    </p>
-                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                    </span>
+                    <span className="ds-caption ds-subtle block">
                       {formatDate(transaction.timestamp)}
-                    </p>
-                    {transaction.notes && (
-                      <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
-                        {transaction.notes}
-                      </p>
-                    )}
-                  </div>
+                      {transaction.notes ? ` · ${transaction.notes}` : ''}
+                    </span>
+                  </span>
                   <button
-                    onClick={() => handleRemoveTransaction(transaction.id)}
-                    className="p-2 hover:bg-red-100 dark:hover:bg-red-950/20 text-red-600 dark:text-red-400 rounded-lg transition-colors"
+                    type="button"
+                    className="ds-icon-btn"
+                    style={{ color: 'var(--danger)' }}
+                    onClick={() => void remove(transaction)}
+                    aria-label={`Remove ${formatCurrency(transaction.amount, currency)}`}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 style={{ width: 18, height: 18 }} aria-hidden="true" />
                   </button>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </div>
       )}

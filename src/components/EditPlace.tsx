@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Place } from '../types';
 import { useStore } from '../store';
-import { ChevronLeft } from 'lucide-react';
+import ScreenHeader from './ScreenHeader';
 
 interface EditPlaceProps {
   place: Place;
@@ -11,102 +11,114 @@ interface EditPlaceProps {
 export default function EditPlace({ place, onBack }: EditPlaceProps) {
   const { updatePlace } = useStore();
   const [name, setName] = useState(place.name);
-  const [address, setAddress] = useState(place.address || '');
   const [area, setArea] = useState(place.area || '');
+  const [address, setAddress] = useState(place.address || '');
   const [mapsUrl, setMapsUrl] = useState(place.mapsUrl || '');
   const [notes, setNotes] = useState(place.notes || '');
+  const [saving, setSaving] = useState(false);
+
+  const canSave = name.trim().length > 0 && !saving;
 
   const handleSave = async () => {
+    if (!canSave) return;
+    setSaving(true);
+
     await updatePlace({
       ...place,
-      name,
-      address,
-      area,
-      mapsUrl,
-      notes,
+      name: name.trim(),
+      area: area.trim() || undefined,
+      address: address.trim() || undefined,
+      mapsUrl: mapsUrl.trim() || undefined,
+      notes: notes.trim() || undefined,
     });
     onBack();
   };
 
   return (
-    <div className="w-full p-4 sm:p-6 space-y-6 pb-32">
-      <div className="flex items-center gap-4">
-        <button
-          onClick={onBack}
-          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-        >
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Edit Place</h1>
-      </div>
+    <div className="ds-screen" style={{ gap: 'var(--space-6)' }}>
+      <ScreenHeader title="Edit place" onBack={onBack} />
 
-      <div className="card space-y-4">
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
-            Name
+      <div className="ds-card flex flex-col gap-4">
+        <div className="ds-field">
+          <label className="ds-label" htmlFor="edit-place-name">
+            Name (required)
           </label>
           <input
+            id="edit-place-name"
+            className="ds-input"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
-            Address
+        <div className="ds-field">
+          <label className="ds-label" htmlFor="edit-place-area">
+            Area
           </label>
           <input
-            type="text"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
-            Area / Neighborhood
-          </label>
-          <input
+            id="edit-place-area"
+            className="ds-input"
             type="text"
             value={area}
             onChange={(e) => setArea(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
-            Google Maps URL
+        <div className="ds-field">
+          <label className="ds-label" htmlFor="edit-place-address">
+            Address
           </label>
           <input
-            type="url"
-            value={mapsUrl}
-            onChange={(e) => setMapsUrl(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            id="edit-place-address"
+            className="ds-input"
+            type="text"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
+        <div className="ds-field">
+          <label className="ds-label" htmlFor="edit-place-maps">
+            Maps link
+          </label>
+          <input
+            id="edit-place-maps"
+            className="ds-input"
+            type="url"
+            inputMode="url"
+            autoCapitalize="off"
+            spellCheck={false}
+            value={mapsUrl}
+            onChange={(e) => setMapsUrl(e.target.value)}
+          />
+        </div>
+
+        <div className="ds-field">
+          <label className="ds-label" htmlFor="edit-place-notes">
             Notes
           </label>
           <textarea
+            id="edit-place-notes"
+            className="ds-input"
+            rows={3}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-20"
           />
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-4 sm:relative sm:border-t-0">
+      <div className="ds-actionbar">
         <button
-          onClick={handleSave}
-          className="w-full btn-primary"
+          type="button"
+          className="ds-btn ds-btn--primary ds-btn--lg ds-btn--block"
+          disabled={!canSave}
+          onClick={() => void handleSave()}
         >
-          Save Changes
+          {saving ? 'Saving…' : 'Save changes'}
+        </button>
+        <button type="button" className="ds-btn ds-btn--secondary ds-btn--block" onClick={onBack}>
+          Cancel
         </button>
       </div>
     </div>

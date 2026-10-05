@@ -1,10 +1,23 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-GB" data-theme="light">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
     <title>Trip</title>
+
+    <!-- Updated at runtime by src/theme.ts so the browser chrome matches the
+         page instead of breaking the top of the screen. -->
+    <meta name="theme-color" content="#f6f7f9" />
+    <meta name="description" content="Shopping hauls, spending and places for a trip. Stored on this device only." />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Trip" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="mobile-web-app-capable" content="yes" />
   </head>
   <body>
     <div id="root"></div>

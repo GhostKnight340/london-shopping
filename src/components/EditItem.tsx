@@ -1,187 +1,184 @@
 import { useState } from 'react';
-import type { ShoppingGoal } from '../types';
+import type { ItemPriority, ShoppingGoal } from '../types';
 import { useStore } from '../store';
-import { ChevronLeft } from 'lucide-react';
+import { parseAmount, priorityLabel } from '../utils';
+import MoneyInput from './MoneyInput';
+import PlacePicker from './PlacePicker';
+import ScreenHeader from './ScreenHeader';
 
 interface EditItemProps {
   item: ShoppingGoal;
   onBack: () => void;
 }
 
+const PRIORITIES: ItemPriority[] = ['must-buy', 'want', 'maybe'];
+
 export default function EditItem({ item, onBack }: EditItemProps) {
-  const { places, updateGoal, updateGoalPlaces } = useStore();
+  const { trip, updateGoal, updateGoalPlaces } = useStore();
   const [title, setTitle] = useState(item.title);
   const [description, setDescription] = useState(item.description || '');
-  const [estimatedCost, setEstimatedCost] = useState(item.estimatedCost?.toString() || '');
-  const [priority, setPriority] = useState(item.priority || 'want');
-  const [quantity, setQuantity] = useState(item.quantity?.toString() || '1');
+  const [estimatedCost, setEstimatedCost] = useState(
+    item.estimatedCost ? item.estimatedCost.toFixed(2) : '',
+  );
+  const [priority, setPriority] = useState<ItemPriority>(item.priority ?? 'want');
+  const [quantity, setQuantity] = useState(String(item.quantity ?? 1));
   const [url, setUrl] = useState(item.url || '');
   const [notes, setNotes] = useState(item.notes || '');
-  const [selectedPlaces, setSelectedPlaces] = useState<Set<string>>(
-    new Set(item.places || [])
-  );
+  const [selectedPlaces, setSelectedPlaces] = useState<Set<string>>(new Set(item.places || []));
+  const [saving, setSaving] = useState(false);
+
+  const currency = trip?.currency || 'GBP';
+  const canSave = title.trim().length > 0 && !saving;
+
+  const togglePlace = (placeId: string) => {
+    setSelectedPlaces((current) => {
+      const next = new Set(current);
+      if (next.has(placeId)) next.delete(placeId);
+      else next.add(placeId);
+      return next;
+    });
+  };
 
   const handleSave = async () => {
+    if (!canSave) return;
+    setSaving(true);
+
+    const parsedQuantity = Number.parseInt(quantity, 10);
+
     await updateGoal({
       ...item,
-      title,
-      description,
-      estimatedCost: estimatedCost ? parseFloat(estimatedCost) : undefined,
-      priority: priority as ShoppingGoal['priority'],
-      quantity: quantity ? parseInt(quantity) : 1,
-      url,
-      notes,
+      title: title.trim(),
+      description: description.trim() || undefined,
+      estimatedCost: parseAmount(estimatedCost) ?? undefined,
+      priority,
+      quantity: Number.isFinite(parsedQuantity) && parsedQuantity > 0 ? parsedQuantity : 1,
+      url: url.trim() || undefined,
+      notes: notes.trim() || undefined,
     });
     await updateGoalPlaces(item.id, Array.from(selectedPlaces));
     onBack();
   };
 
-  const togglePlace = (placeId: string) => {
-    const newSet = new Set(selectedPlaces);
-    if (newSet.has(placeId)) {
-      newSet.delete(placeId);
-    } else {
-      newSet.add(placeId);
-    }
-    setSelectedPlaces(newSet);
-  };
-
   return (
-    <div className="w-full p-4 sm:p-6 space-y-6 pb-32">
-      <div className="flex items-center gap-4">
-        <button
-          onClick={onBack}
-          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-        >
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Edit Item</h1>
-      </div>
+    <div className="ds-screen" style={{ gap: 'var(--space-6)' }}>
+      <ScreenHeader title="Edit item" onBack={onBack} />
 
-      <div className="card space-y-4">
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
-            Title
+      <div className="ds-card flex flex-col gap-4">
+        <div className="ds-field">
+          <label className="ds-label" htmlFor="edit-item-title">
+            Title (required)
           </label>
           <input
+            id="edit-item-title"
+            className="ds-input"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
-            Description
-          </label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-20"
-          />
+        <div className="ds-field">
+          <span className="ds-label">Priority</span>
+          <div className="ds-segment" role="group" aria-label="Priority">
+            {PRIORITIES.map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={priority === value}
+                onClick={() => setPriority(value)}
+              >
+                {priorityLabel(value).label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
-              Priority
+          <div className="ds-field">
+            <label className="ds-label" htmlFor="edit-item-estimate">
+              Estimated price
             </label>
-            <select
-              value={priority}
-              onChange={(e) => setPriority(e.target.value as any)}
-              className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="must-buy">🔴 Must Buy</option>
-              <option value="want">🟡 Want</option>
-              <option value="maybe">⚪ Maybe</option>
-            </select>
+            <MoneyInput
+              id="edit-item-estimate"
+              value={estimatedCost}
+              onChange={setEstimatedCost}
+              currency={currency}
+            />
           </div>
 
-          <div>
-            <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
+          <div className="ds-field">
+            <label className="ds-label" htmlFor="edit-item-quantity">
               Quantity
             </label>
             <input
-              type="number"
+              id="edit-item-quantity"
+              className="ds-input ds-num"
+              type="text"
+              inputMode="numeric"
               value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              min="1"
+              onChange={(e) => setQuantity(e.target.value.replace(/[^0-9]/g, ''))}
             />
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
-            Estimated Price (£)
+        <PlacePicker label="Where to look" selected={selectedPlaces} onToggle={togglePlace} />
+
+        <div className="ds-field">
+          <label className="ds-label" htmlFor="edit-item-description">
+            Description
           </label>
           <input
-            type="number"
-            value={estimatedCost}
-            onChange={(e) => setEstimatedCost(e.target.value)}
-            placeholder="0.00"
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            step="0.01"
+            id="edit-item-description"
+            className="ds-input"
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
-            URL / Link
+        <div className="ds-field">
+          <label className="ds-label" htmlFor="edit-item-url">
+            Link
           </label>
           <input
+            id="edit-item-url"
+            className="ds-input"
             type="url"
+            inputMode="url"
+            autoCapitalize="off"
+            spellCheck={false}
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://..."
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="https://…"
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-2">
+        <div className="ds-field">
+          <label className="ds-label" htmlFor="edit-item-notes">
             Notes
           </label>
           <textarea
+            id="edit-item-notes"
+            className="ds-input"
+            rows={3}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-20"
-            placeholder="Details, colors, sizes..."
+            placeholder="Sizes, colours, brands"
           />
-        </div>
-
-        <div>
-          <label className="block text-sm font-bold text-slate-900 dark:text-white mb-3">
-            Where to Buy
-          </label>
-          <div className="space-y-2">
-            {places.map(place => (
-              <label key={place.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedPlaces.has(place.id)}
-                  onChange={() => togglePlace(place.id)}
-                  className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 accent-blue-600"
-                />
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-white">{place.name}</p>
-                  {place.area && (
-                    <p className="text-xs text-slate-600 dark:text-slate-400">{place.area}</p>
-                  )}
-                </div>
-              </label>
-            ))}
-          </div>
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-4 sm:relative sm:border-t-0">
+      <div className="ds-actionbar">
         <button
-          onClick={handleSave}
-          className="w-full btn-primary"
+          type="button"
+          className="ds-btn ds-btn--primary ds-btn--lg ds-btn--block"
+          disabled={!canSave}
+          onClick={() => void handleSave()}
         >
-          Save Changes
+          {saving ? 'Saving…' : 'Save changes'}
+        </button>
+        <button type="button" className="ds-btn ds-btn--secondary ds-btn--block" onClick={onBack}>
+          Cancel
         </button>
       </div>
     </div>
