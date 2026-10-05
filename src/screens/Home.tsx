@@ -31,10 +31,10 @@ export default function Home({ onNavigate }: HomeProps) {
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 dark:text-white">
-          London Shopping
+          Trip
         </h1>
         <p className="text-lg text-slate-600 dark:text-slate-400">
-          {urgencyMessage} • {daysRemaining === 0 ? '🏁' : '📍'} {trip.location}
+          {urgencyMessage}
         </p>
       </div>
 
